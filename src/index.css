@@ -1,0 +1,249 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fitness Gym Dark Theme Design System */
+@layer base {
+  :root {
+    /* Dark fitness theme with gold accents */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+
+    /* Gold accent as primary */
+    --primary: 43 73% 47%;
+    --primary-foreground: 0 0% 4%;
+
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 43 73% 47%;
+    --accent-foreground: 0 0% 4%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 43 73% 47%;
+
+    --radius: 0.5rem;
+
+    /* Custom fitness colors */
+    --gold: 43 73% 47%;
+    --gold-light: 43 73% 57%;
+    --gold-dark: 43 73% 37%;
+    --dark-bg: 0 0% 4%;
+    --dark-card: 0 0% 8%;
+    --dark-elevated: 0 0% 12%;
+
+    /* Sidebar */
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 43 73% 47%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 43 73% 47%;
+  }
+
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 43 73% 47%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 43 73% 47%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 43 73% 47%;
+  }
+
+  .dark {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 43 73% 47%;
+    --primary-foreground: 0 0% 4%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 43 73% 47%;
+    --accent-foreground: 0 0% 4%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 18%;
+    --input: 0 0% 18%;
+    --ring: 43 73% 47%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Oswald', sans-serif;
+    @apply font-bold tracking-wide;
+  }
+}
+
+@layer components {
+  /* Gold gradient text */
+  .text-gradient-gold {
+    @apply bg-gradient-to-r from-primary via-[hsl(43,73%,57%)] to-primary bg-clip-text text-transparent;
+  }
+
+  /* Hero button styles */
+  .btn-primary-glow {
+    @apply relative overflow-hidden bg-primary text-primary-foreground font-semibold px-8 py-4 rounded-md transition-all duration-300;
+    box-shadow: 0 0 20px hsl(43 73% 47% / 0.3);
+  }
+
+  .btn-primary-glow:hover {
+    box-shadow: 0 0 30px hsl(43 73% 47% / 0.5);
+    transform: translateY(-2px);
+  }
+
+  /* Glass card effect */
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-md border border-border/50 rounded-xl;
+  }
+
+  /* Section styling */
+  .section-padding {
+    @apply py-20 px-4 md:px-8 lg:px-16;
+  }
+
+  /* Gold underline */
+  .gold-underline {
+    @apply relative;
+  }
+
+  .gold-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-16 h-1 bg-primary rounded-full;
+  }
+
+  /* Stats card */
+  .stat-card {
+    @apply bg-secondary/50 backdrop-blur-sm border border-border rounded-xl p-6 text-center transition-all duration-300 hover:border-primary/50 hover:bg-secondary;
+  }
+
+  /* Course card hover effect */
+  .course-card {
+    @apply bg-card border border-border rounded-xl overflow-hidden transition-all duration-500 hover:border-primary/50 hover:shadow-[0_0_30px_hsl(43,73%,47%,0.15)];
+  }
+
+  /* Calendar slot */
+  .calendar-slot {
+    @apply bg-secondary/30 border border-border/50 rounded-lg p-3 text-sm transition-all duration-200 hover:bg-secondary hover:border-primary/30 cursor-pointer;
+  }
+
+  .calendar-slot-active {
+    @apply bg-primary/20 border-primary/50 text-primary;
+  }
+
+  /* Dashboard stat */
+  .dashboard-stat {
+    @apply bg-gradient-to-br from-secondary to-card border border-border rounded-xl p-6;
+  }
+
+  /* Navigation link */
+  .nav-link {
+    @apply text-muted-foreground hover:text-foreground transition-colors duration-200 font-medium;
+  }
+
+  .nav-link-active {
+    @apply text-primary;
+  }
+}
+
+@layer utilities {
+  /* Custom animations */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  /* High contrast mode */
+  .high-contrast {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 0%;
+    --card-foreground: 0 0% 100%;
+    --border: 0 0% 50%;
+    --muted-foreground: 0 0% 80%;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Gradient backgrounds */
+  .bg-gradient-dark {
+    background: linear-gradient(135deg, hsl(0 0% 4%) 0%, hsl(0 0% 8%) 100%);
+  }
+
+  .bg-gradient-gold {
+    background: linear-gradient(135deg, hsl(43 73% 37%) 0%, hsl(43 73% 57%) 100%);
+  }
+}
