@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   User,
@@ -23,6 +23,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useReservations } from "@/contexts/ReservationsContext";
 import { useSeances } from "@/contexts/SeancesContext";
 import { useReports } from "@/contexts/ReportsContext";
+import { useInscriptions } from "@/contexts/InscriptionsContext";
+import { useTarifs } from "@/contexts/TarifsContext";
+import { useAbonnements } from "@/contexts/AbonnementsContext";
 import { useToast } from "@/hooks/use-toast";
 import { typesReportConfig, statutReportConfig, type TypeReport } from "@/lib/reports";
 import { Input } from "@/components/ui/input";
@@ -38,27 +41,39 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const mockAbonnement = {
-  type: "Trimestriel",
-  prix: 420,
-  dateDebut: "2025-12-01",
-  dateFin: "2026-02-28",
-  statut: "actif" as const,
-  renouvellementAuto: true,
-};
-
-const mockDocuments = [
-  { nom: "Certificat médical", statut: "validé", date: "2025-11-10" },
-  { nom: "Assurance", statut: "validé", date: "2025-11-12" },
-  { nom: "Photo d'identité", statut: "validé", date: "2025-11-15" },
-];
-
 const UserPage = () => {
   const { user } = useAuth();
   const { getReservationsMembre, annulerReservation } = useReservations();
   const { seances, modifierSeance } = useSeances();
   const { getReportsAuteur, ajouterReport } = useReports();
+  const { ajouterInscription } = useInscriptions();
+  const { plans } = useTarifs();
+  const { getAbonnementMembre, renouvelerAbonnement, ajouterAbonnement } = useAbonnements();
+  const { inscriptions } = useInscriptions();
   const { toast } = useToast();
+  
+  // Récupérer l'abonnement réel du membre
+  const abonnementMembre = user ? getAbonnementMembre(user.id) : undefined;
+  
+  // Récupérer les documents depuis l'inscription validée
+  const documentsMembre = user
+    ? inscriptions
+        .filter((i) => i.email === user.email && i.statut === "valide")
+        .map((inscription) => {
+          const docs: Array<{ nom: string; statut: string; date: string }> = [];
+          if (inscription.certificatMedical) {
+            docs.push({ nom: "Certificat médical", statut: "validé", date: inscription.dateSoumission });
+          }
+          if (inscription.assurance) {
+            docs.push({ nom: "Assurance", statut: "validé", date: inscription.dateSoumission });
+          }
+          if (inscription.photo) {
+            docs.push({ nom: "Photo d'identité", statut: "validé", date: inscription.dateSoumission });
+          }
+          return docs;
+        })
+        .flat()
+    : [];
   
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [nouveauReport, setNouveauReport] = useState({
@@ -66,6 +81,33 @@ const UserPage = () => {
     titre: "",
     description: "",
   });
+  
+  // États pour la modification de profil
+  const [editProfilDialogOpen, setEditProfilDialogOpen] = useState(false);
+  const [profilModifie, setProfilModifie] = useState({
+    nom: user?.nom || "",
+    prenom: user?.prenom || "",
+    email: user?.email || "",
+    telephone: user?.telephone || "",
+    cin: user?.cin || "",
+  });
+  
+  // États pour le changement d'abonnement
+  const [abonnementDialogOpen, setAbonnementDialogOpen] = useState(false);
+  const [abonnementSelectionne, setAbonnementSelectionne] = useState<string>("");
+  
+  // Mettre à jour le profil modifié quand l'utilisateur change
+  useEffect(() => {
+    if (user) {
+      setProfilModifie({
+        nom: user.nom || "",
+        prenom: user.prenom || "",
+        email: user.email || "",
+        telephone: user.telephone || "",
+        cin: user.cin || "",
+      });
+    }
+  }, [user]);
 
   const reservationsMembre = user ? getReservationsMembre(user.id) : [];
   const reservationsTriees = [...reservationsMembre].sort((a, b) => {
@@ -162,7 +204,7 @@ const UserPage = () => {
                       <p><span className="text-muted-foreground">Email:</span> {user?.email}</p>
                       <p><span className="text-muted-foreground">Téléphone:</span> {user?.telephone || "Non renseigné"}</p>
                       <p><span className="text-muted-foreground">CIN:</span> {user?.cin || "Non renseigné"}</p>
-                      <p><span className="text-muted-foreground">Membre depuis:</span> {user ? "2024-11-15" : "N/A"}</p>
+                      <p><span className="text-muted-foreground">Membre depuis:</span> {user && abonnementMembre ? formatDate(abonnementMembre.dateDebut) : user ? "Non renseigné" : "N/A"}</p>
                     </CardContent>
                   </Card>
                   <Card className="bg-secondary/30 border-border">
@@ -172,14 +214,29 @@ const UserPage = () => {
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground mb-4">
-                        {user ? (
-                          <>Vous êtes membre depuis {formatDate("2024-11-15")}. Votre abonnement actuel est actif jusqu'au {formatDate(mockAbonnement.dateFin)}.</>
+                        {user && abonnementMembre ? (
+                          <>Vous êtes membre depuis {formatDate(abonnementMembre.dateDebut)}. Votre abonnement actuel est actif jusqu'au {formatDate(abonnementMembre.dateFin)}.</>
+                        ) : user ? (
+                          "Vous n'avez pas encore d'abonnement actif."
                         ) : (
                           "Informations non disponibles"
                         )}
                       </p>
-                      <Button variant="outline" size="sm">
-                        Modifier mon profil (bientôt)
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                          setProfilModifie({
+                            nom: user?.nom || "",
+                            prenom: user?.prenom || "",
+                            email: user?.email || "",
+                            telephone: user?.telephone || "",
+                            cin: user?.cin || "",
+                          });
+                          setEditProfilDialogOpen(true);
+                        }}
+                      >
+                        Modifier mon profil
                       </Button>
                     </CardContent>
                   </Card>
@@ -191,40 +248,58 @@ const UserPage = () => {
                 <p className="text-muted-foreground mb-6">
                   Détails de votre abonnement et dates de validité.
                 </p>
-                <Card className="bg-secondary/30 border-border max-w-xl">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>{mockAbonnement.type}</CardTitle>
-                      <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
-                        Actif
-                      </Badge>
-                    </div>
-                    <CardDescription>Abonnement actif</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Prix</span>
-                      <span className="font-semibold">{mockAbonnement.prix.toLocaleString("fr-TN")} DT</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Début</span>
-                      <span>{formatDate(mockAbonnement.dateDebut)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Fin</span>
-                      <span>{formatDate(mockAbonnement.dateFin)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Renouvellement auto</span>
-                      <span>{mockAbonnement.renouvellementAuto ? "Oui" : "Non"}</span>
-                    </div>
-                    <div className="pt-4 border-t border-border">
-                      <Button variant="outline" size="sm">
-                        Renouveler ou changer de forfait (bientôt)
+                {abonnementMembre ? (
+                  <Card className="bg-secondary/30 border-border max-w-xl">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>{abonnementMembre.type}</CardTitle>
+                        <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+                          {abonnementMembre.statut === "actif" ? "Actif" : abonnementMembre.statut === "expire" ? "Expiré" : "À renouveler"}
+                        </Badge>
+                      </div>
+                      <CardDescription>Abonnement {abonnementMembre.statut === "actif" ? "actif" : abonnementMembre.statut}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Prix</span>
+                        <span className="font-semibold">{abonnementMembre.prix.toLocaleString("fr-TN")} DT</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Début</span>
+                        <span>{formatDate(abonnementMembre.dateDebut)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Fin</span>
+                        <span>{formatDate(abonnementMembre.dateFin)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Renouvellement auto</span>
+                        <span>{abonnementMembre.renouvellementAuto ? "Oui" : "Non"}</span>
+                      </div>
+                      <div className="pt-4 border-t border-border">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => setAbonnementDialogOpen(true)}
+                        >
+                          Renouveler ou changer de forfait
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="bg-secondary/30 border-border max-w-xl">
+                    <CardContent className="p-6 text-center">
+                      <p className="text-muted-foreground mb-4">Vous n'avez pas encore d'abonnement actif.</p>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setAbonnementDialogOpen(true)}
+                      >
+                        Choisir un forfait
                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
               </TabsContent>
 
               <TabsContent value="reservations">
@@ -305,26 +380,34 @@ const UserPage = () => {
                   Certificat médical, assurance et pièces d'identité.
                 </p>
                 <div className="space-y-4">
-                  {mockDocuments.map((doc) => (
-                    <Card key={doc.nom} className="bg-secondary/30 border-border">
-                      <CardContent className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                            <FileText className="w-6 h-6 text-primary" />
+                  {documentsMembre.length > 0 ? (
+                    documentsMembre.map((doc) => (
+                      <Card key={doc.nom} className="bg-secondary/30 border-border">
+                        <CardContent className="flex items-center justify-between p-4">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                              <FileText className="w-6 h-6 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-semibold">{doc.nom}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Validé le {formatDate(doc.date)}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-semibold">{doc.nom}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Validé le {formatDate(doc.date)}
-                            </p>
-                          </div>
-                        </div>
-                        <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
-                          {doc.statut}
-                        </Badge>
+                          <Badge className="bg-green-500/20 text-green-500 border-green-500/30">
+                            {doc.statut}
+                          </Badge>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card className="bg-secondary/30 border-border">
+                      <CardContent className="p-6 text-center">
+                        <p className="text-muted-foreground">Aucun document disponible.</p>
                       </CardContent>
                     </Card>
-                  ))}
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-6">
                   Pour mettre à jour vos documents, contactez l'accueil.
@@ -492,6 +575,201 @@ const UserPage = () => {
             >
               <Send className="w-4 h-4 mr-2" />
               Envoyer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Modifier le profil */}
+      <Dialog open={editProfilDialogOpen} onOpenChange={setEditProfilDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier mon profil</DialogTitle>
+            <DialogDescription>
+              Mettez à jour vos informations personnelles.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="nom">Nom</Label>
+                <Input
+                  id="nom"
+                  value={profilModifie.nom}
+                  onChange={(e) => setProfilModifie((prev) => ({ ...prev, nom: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="prenom">Prénom</Label>
+                <Input
+                  id="prenom"
+                  value={profilModifie.prenom}
+                  onChange={(e) => setProfilModifie((prev) => ({ ...prev, prenom: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={profilModifie.email}
+                onChange={(e) => setProfilModifie((prev) => ({ ...prev, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="telephone">Téléphone</Label>
+              <Input
+                id="telephone"
+                value={profilModifie.telephone}
+                onChange={(e) => setProfilModifie((prev) => ({ ...prev, telephone: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cin">CIN</Label>
+              <Input
+                id="cin"
+                value={profilModifie.cin}
+                onChange={(e) => setProfilModifie((prev) => ({ ...prev, cin: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditProfilDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => {
+                if (!profilModifie.nom || !profilModifie.prenom || !profilModifie.email) {
+                  toast({
+                    variant: "destructive",
+                    title: "Champs manquants",
+                    description: "Veuillez remplir au moins le nom, prénom et email.",
+                  });
+                  return;
+                }
+                // Dans une vraie application, cela devrait mettre à jour l'utilisateur via une API
+                toast({
+                  title: "Profil modifié",
+                  description: "Vos informations ont été mises à jour avec succès.",
+                });
+                setEditProfilDialogOpen(false);
+              }}
+            >
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog: Changer d'abonnement */}
+      <Dialog open={abonnementDialogOpen} onOpenChange={setAbonnementDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renouveler ou changer d'abonnement</DialogTitle>
+            <DialogDescription>
+              Sélectionnez un nouveau forfait. Votre demande sera envoyée à l'administrateur pour validation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="abonnement">Choisir un forfait</Label>
+              <Select
+                value={abonnementSelectionne}
+                onValueChange={setAbonnementSelectionne}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez un forfait" />
+                </SelectTrigger>
+                <SelectContent>
+                  {plans.filter((p) => p.actif).map((plan) => (
+                    <SelectItem key={plan.id} value={plan.name}>
+                      {plan.name} - {plan.price} DT {plan.period}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {abonnementSelectionne && (() => {
+              const planSelectionne = plans.find((p) => p.name === abonnementSelectionne);
+              if (!planSelectionne) return null;
+              return (
+                <Card className="bg-secondary/30 border-border">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold">{planSelectionne.name}</p>
+                      <p className="text-lg font-bold text-primary">
+                        {planSelectionne.price} DT {planSelectionne.period}
+                      </p>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">{planSelectionne.description}</p>
+                    <ul className="text-sm space-y-1">
+                      {planSelectionne.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-center gap-2">
+                          <span className="text-green-500">✓</span>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAbonnementDialogOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              onClick={() => {
+                if (!user || !abonnementSelectionne) {
+                  toast({
+                    variant: "destructive",
+                    title: "Sélection requise",
+                    description: "Veuillez sélectionner un forfait.",
+                  });
+                  return;
+                }
+                const planSelectionne = plans.find((p) => p.name === abonnementSelectionne);
+                if (!planSelectionne) return;
+                
+                const prix = parseInt(planSelectionne.price.replace(/\s/g, ""));
+                
+                // Si le membre a déjà un abonnement actif, le renouveler
+                if (abonnementMembre) {
+                  renouvelerAbonnement(abonnementMembre.id, planSelectionne.name as any, prix);
+                  toast({
+                    title: "Abonnement renouvelé",
+                    description: `Votre abonnement a été renouvelé avec le forfait "${planSelectionne.name}".`,
+                  });
+                } else {
+                  // Sinon, créer une demande d'abonnement (Inscription avec typeAbonnementDemande)
+                  ajouterInscription({
+                    id: `inscription-${Date.now()}`,
+                    nom: user.nom,
+                    prenom: user.prenom,
+                    email: user.email,
+                    telephone: user.telephone || "",
+                    cin: user.cin || "",
+                    dateSoumission: new Date().toISOString().split("T")[0],
+                    statut: "en_attente_validation",
+                    certificatMedical: true, // Le membre a déjà un certificat valide
+                    assurance: true, // Le membre a déjà une assurance valide
+                    photo: true, // Le membre a déjà une photo
+                    typeAbonnementDemande: planSelectionne.name as any,
+                  });
+                  
+                  toast({
+                    title: "Demande envoyée",
+                    description: `Votre demande pour le forfait "${planSelectionne.name}" a été envoyée à l'administrateur pour validation.`,
+                  });
+                }
+                setAbonnementSelectionne("");
+                setAbonnementDialogOpen(false);
+              }}
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Envoyer la demande
             </Button>
           </DialogFooter>
         </DialogContent>

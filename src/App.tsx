@@ -8,6 +8,7 @@ import { SeancesProvider } from "@/contexts/SeancesContext";
 import { DemandesAbonnementProvider } from "@/contexts/DemandesAbonnementContext";
 import { TarifsProvider } from "@/contexts/TarifsContext";
 import { InscriptionsProvider } from "@/contexts/InscriptionsContext";
+import { AbonnementsProvider } from "@/contexts/AbonnementsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { ReservationsProvider } from "@/contexts/ReservationsContext";
@@ -41,7 +42,8 @@ const App = () => (
                 <DemandesAbonnementProvider>
                   <TarifsProvider>
                     <InscriptionsProvider>
-                      <TooltipProvider>
+                      <AbonnementsProvider>
+                        <TooltipProvider>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -119,6 +121,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </AbonnementsProvider>
       </InscriptionsProvider>
       </TarifsProvider>
       </DemandesAbonnementProvider>

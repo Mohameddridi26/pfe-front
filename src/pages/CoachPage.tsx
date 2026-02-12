@@ -183,14 +183,6 @@ const CoachPage = () => {
     });
   }, [seancesTriees, getReservationsSeance]);
 
-  // Fonction: marquer la séance comme complétée
-  const marquerSeanceCompletee = (seanceId: string) => {
-    modifierSeance(seanceId, { completee: true });
-    toast({
-      title: "Séance complétée",
-      description: "Cette séance a été marquée comme bien passée.",
-    });
-  };
 
 
   return (
@@ -422,19 +414,16 @@ const CoachPage = () => {
                                   </p>
                                 </div>
                               </div>
-                              {!estPasse && !seance.completee && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => marquerSeanceCompletee(seance.id)}
-                                >
-                                  Gérer présences
-                                </Button>
-                              )}
                               {seance.completee && (
                                 <div className="flex items-center gap-2 text-green-500">
                                   <CheckCircle className="w-5 h-5" />
                                   <span className="text-sm font-medium">Séance complétée</span>
+                                </div>
+                              )}
+                              {!seance.completee && estPasse && (
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Clock className="w-4 h-4" />
+                                  <span className="text-sm">En attente de confirmation</span>
                                 </div>
                               )}
                             </div>

@@ -14,6 +14,8 @@ export interface User {
   prenom: string;
   email: string;
   role: UserRole;
+  telephone?: string;
+  cin?: string;
 }
 
 interface AuthContextType {
@@ -34,7 +36,7 @@ const STORAGE_KEY = "fitzone_auth";
 // Comptes démo pour le développement (à remplacer par API backend)
 const DEMO_ACCOUNTS = [
   { email: "admin@fitzone.com", password: "admin123", role: "admin" as const, nom: "Admin", prenom: "FITZONE" },
-  { email: "membre@fitzone.com", password: "membre123", role: "membre" as const, nom: "Martin", prenom: "Sophie" },
+  { email: "membre@fitzone.com", password: "membre123", role: "membre" as const, nom: "Martin", prenom: "Sophie", telephone: "06 12 34 56 78", cin: "AB123456" },
   { email: "coach@fitzone.com", password: "coach123", role: "coach" as const, nom: "P.", prenom: "Jean" },
 ];
 
@@ -67,6 +69,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         prenom: account.prenom,
         email: account.email,
         role: account.role,
+        telephone: (account as any).telephone,
+        cin: (account as any).cin,
       };
       setUser(userData);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));

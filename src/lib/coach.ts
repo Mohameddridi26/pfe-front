@@ -20,11 +20,29 @@ export interface Coach {
   prenom: string;
   email: string;
   mdp: string;
-  specialites: string[]; // Array de spécialités selon le diagramme
+  specialites: string[]; // 1 à 2 spécialités maximum par coach
   disponibilites: Disponibilite[];
   sallesAssignees: string[]; // Array de noms de salles
   tel: string;
 }
+
+/**
+ * Liste des domaines de spécialité disponibles pour les coaches
+ */
+export const domainesSpecialite = [
+  "Musculation",
+  "CrossFit",
+  "Yoga",
+  "Zumba",
+  "Boxe",
+  "Pilates",
+  "Cardio",
+  "Fitness général",
+  "Stretching",
+  "Aquagym",
+] as const;
+
+export type DomaineSpecialite = typeof domainesSpecialite[number];
 
 /**
  * Interface pour représenter un client/membre assigné à un coach

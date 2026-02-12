@@ -1,0 +1,5 @@
+﻿# Fichiers uploadÃ©s (ne pas versionner)
+uploads/
+*.log
+node_modules/
+.env

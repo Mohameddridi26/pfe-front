@@ -19,6 +19,7 @@ import {
   MapPin,
   User,
   MessageSquare,
+  CheckCircle,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -55,11 +56,6 @@ import Dashboard from "@/components/Dashboard";
 import { type Inscription, type StatutInscription } from "@/lib/inscriptions";
 import { abonnementsMock } from "@/lib/abonnements";
 import {
-  type MethodePaiement,
-  validerDetailsPaiement,
-  methodesPaiementConfig,
-} from "@/lib/paiement";
-import {
   type Seance,
   coachsDisponibles,
   sallesDisponibles,
@@ -70,7 +66,10 @@ import { useSeances } from "@/contexts/SeancesContext";
 import { useReservations } from "@/contexts/ReservationsContext";
 import { useInscriptions } from "@/contexts/InscriptionsContext";
 import { useReports } from "@/contexts/ReportsContext";
+import { useAbonnements } from "@/contexts/AbonnementsContext";
 import { coursData, type SportId } from "@/lib/cours";
+import { domainesSpecialite, type Disponibilite } from "@/lib/coach";
+import { useTarifs } from "@/contexts/TarifsContext";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -90,43 +89,80 @@ const statutConfig: Record<StatutInscription, { label: string; className: string
   rejete: { label: "Rejeté", className: "bg-red-500/20 text-red-500 border-red-500/30" },
 };
 
-type DetailsPaiementForm = Record<string, string>;
-
-const initialDetails: DetailsPaiementForm = {};
-
 interface Coach {
   id: string;
   nom: string;
   prenom: string;
   email: string;
   mdp: string;
-  specialite: string;
+  specialites: string[]; // 1 à 2 spécialités maximum
   tel: string;
+  disponibilites?: Disponibilite[]; // Disponibilités du coach
 }
 
+// Mapping entre les activités et les spécialités
+const mappingActiviteSpecialite: Record<SportId, string> = {
+  musculation: "Musculation",
+  crossfit: "CrossFit",
+  yoga: "Yoga",
+  zumba: "Zumba",
+  boxe: "Boxe",
+  pilates: "Pilates",
+};
+
 // Convertir les coachs disponibles initiaux en objets Coach
+// Pour l'instant, on utilise des disponibilités mock par défaut
+// Dans une vraie application, ces disponibilités seraient récupérées depuis la base de données
 const initialCoachs: Coach[] = coachsDisponibles.map((nom, index) => ({
   id: `coach-${index + 1}`,
   nom: nom.split(" ")[0] || nom,
   prenom: nom.split(" ")[1] || "",
   email: `${nom.toLowerCase().replace(/\s/g, ".")}@fitzone.com`,
   mdp: "",
-  specialite: "Fitness général",
+  specialites: ["Fitness général"], // Par défaut une seule spécialité
   tel: "",
+  disponibilites: [
+    { id: `d-${index}-1`, jourSemaine: 1, heureDebut: "08:00", heureFin: "12:00" }, // Lundi matin
+    { id: `d-${index}-2`, jourSemaine: 1, heureDebut: "14:00", heureFin: "18:00" }, // Lundi après-midi
+    { id: `d-${index}-3`, jourSemaine: 3, heureDebut: "08:00", heureFin: "12:00" }, // Mercredi matin
+    { id: `d-${index}-4`, jourSemaine: 3, heureDebut: "14:00", heureFin: "18:00" }, // Mercredi après-midi
+    { id: `d-${index}-5`, jourSemaine: 5, heureDebut: "08:00", heureFin: "12:00" }, // Vendredi matin
+  ],
 }));
+
+// Ajouter le coach connecté (coach@fitzone.com) s'il n'existe pas déjà
+const coachConnecte: Coach = {
+  id: "coach-1",
+  nom: "P.",
+  prenom: "Jean",
+  email: "coach@fitzone.com",
+  mdp: "",
+  specialites: ["Musculation", "Boxe"], // Exemple avec 2 spécialités
+  tel: "",
+  disponibilites: [
+    { id: "d-coach-1", jourSemaine: 1, heureDebut: "08:00", heureFin: "12:00" },
+    { id: "d-coach-2", jourSemaine: 1, heureDebut: "14:00", heureFin: "18:00" },
+    { id: "d-coach-3", jourSemaine: 3, heureDebut: "08:00", heureFin: "12:00" },
+    { id: "d-coach-4", jourSemaine: 3, heureDebut: "14:00", heureFin: "18:00" },
+    { id: "d-coach-5", jourSemaine: 5, heureDebut: "08:00", heureFin: "12:00" },
+  ],
+};
+
+// Vérifier si le coach connecté existe déjà, sinon l'ajouter
+if (!initialCoachs.find((c) => c.email === "coach@fitzone.com")) {
+  initialCoachs.unshift(coachConnecte);
+}
 
 const AdminPage = () => {
   const { toast } = useToast();
   const { inscriptions, setInscriptions } = useInscriptions();
   const { reservations } = useReservations();
   const { reports, modifierReport, getReportsEnAttente } = useReports();
-  const [inscriptionToValidate, setInscriptionToValidate] = useState<Inscription | null>(null);
+  const { ajouterAbonnement } = useAbonnements();
+  const { plans } = useTarifs();
   const [reportEnCours, setReportEnCours] = useState<string | null>(null);
   const [reponseReport, setReponseReport] = useState("");
   const [statutReport, setStatutReport] = useState<StatutReport>("en_attente");
-  const [methodePaiement, setMethodePaiement] = useState<MethodePaiement | "">("");
-  const [detailsPaiement, setDetailsPaiement] = useState<DetailsPaiementForm>(initialDetails);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const { seances, setSeances } = useSeances();
   const [seanceDialogOpen, setSeanceDialogOpen] = useState(false);
   const [seanceEnEdition, setSeanceEnEdition] = useState<Seance | null>(null);
@@ -149,7 +185,7 @@ const AdminPage = () => {
     prenom: "",
     email: "",
     mdp: "",
-    specialite: "",
+    specialites: [],
     tel: "",
   });
 
@@ -167,7 +203,7 @@ const AdminPage = () => {
         prenom: coach.prenom,
         email: coach.email,
         mdp: "",
-        specialite: coach.specialite,
+        specialites: [...coach.specialites],
         tel: coach.tel,
       });
     } else {
@@ -177,7 +213,7 @@ const AdminPage = () => {
         prenom: "",
         email: "",
         mdp: "",
-        specialite: "",
+        specialites: [],
         tel: "",
       });
     }
@@ -192,17 +228,26 @@ const AdminPage = () => {
       prenom: "",
       email: "",
       mdp: "",
-      specialite: "",
+      specialites: [],
       tel: "",
     });
   };
 
   const handleSauvegarderCoach = () => {
-    if (!nouveauCoach.nom.trim() || !nouveauCoach.prenom.trim() || !nouveauCoach.email.trim()) {
+    if (!nouveauCoach.nom.trim() || !nouveauCoach.prenom.trim() || !nouveauCoach.email.trim() || nouveauCoach.specialites.length === 0) {
       toast({
         variant: "destructive",
         title: "Champs requis manquants",
-        description: "Veuillez remplir au moins le nom, prénom et email.",
+        description: "Veuillez remplir tous les champs obligatoires, y compris au moins une spécialité.",
+      });
+      return;
+    }
+    
+    if (nouveauCoach.specialites.length > 2) {
+      toast({
+        variant: "destructive",
+        title: "Trop de spécialités",
+        description: "Un coach ne peut avoir qu'un maximum de 2 spécialités.",
       });
       return;
     }
@@ -285,20 +330,6 @@ const AdminPage = () => {
     });
   };
 
-  const openDialogPaiement = (inscription: Inscription) => {
-    setInscriptionToValidate(inscription);
-    setMethodePaiement("");
-    setDetailsPaiement(initialDetails);
-    setValidationError(null);
-  };
-
-  const closeDialogPaiement = () => {
-    setInscriptionToValidate(null);
-    setMethodePaiement("");
-    setDetailsPaiement(initialDetails);
-    setValidationError(null);
-  };
-
   const handleValider = (inscription: Inscription) => {
     if (!inscription.certificatMedical) {
       toast({
@@ -319,43 +350,73 @@ const AdminPage = () => {
       );
       return;
     }
-    openDialogPaiement(inscription);
-  };
-
-  const handleConfirmerPaiement = () => {
-    if (!inscriptionToValidate || !methodePaiement) {
-      setValidationError("Veuillez sélectionner une méthode de paiement.");
-      return;
-    }
-    const result = validerDetailsPaiement(methodePaiement, detailsPaiement);
-    if (!result.success) {
-      const errorResult = result as { success: false; error: string };
-      setValidationError(errorResult.error);
-      return;
-    }
+    
+    // Valider l'inscription
     setInscriptions((prev) =>
       prev.map((i) =>
-        i.id === inscriptionToValidate.id
+        i.id === inscription.id
           ? {
               ...i,
               statut: "valide" as const,
-              methodePaiement: result.data.methode,
-              detailsPaiement: result.data,
             }
           : i
       )
     );
+    
+    // Créer un abonnement automatiquement si un type d'abonnement a été demandé
+    if (inscription.typeAbonnementDemande) {
+      const planSelectionne = plans.find((p) => p.name === inscription.typeAbonnementDemande);
+      
+      if (planSelectionne) {
+        const aujourdhui = new Date().toISOString().split("T")[0];
+        let dateFin: string;
+        let prix: number;
+        
+        // Calculer la date de fin et le prix selon le type
+        if (inscription.typeAbonnementDemande === "Mensuel") {
+          const d = new Date(aujourdhui);
+          d.setMonth(d.getMonth() + 1);
+          dateFin = d.toISOString().split("T")[0];
+          prix = parseInt(planSelectionne.price.replace(/\s/g, ""));
+        } else if (inscription.typeAbonnementDemande === "Trimestriel") {
+          const d = new Date(aujourdhui);
+          d.setMonth(d.getMonth() + 3);
+          dateFin = d.toISOString().split("T")[0];
+          prix = parseInt(planSelectionne.price.replace(/\s/g, ""));
+        } else {
+          const d = new Date(aujourdhui);
+          d.setMonth(d.getMonth() + 12);
+          dateFin = d.toISOString().split("T")[0];
+          prix = parseInt(planSelectionne.price.replace(/\s/g, ""));
+        }
+        
+        // Générer un ID de membre basé sur l'inscription ou utiliser l'ID existant si déjà membre
+        // Pour l'instant, on utilise l'email comme identifiant unique
+        // Dans le backend, cela sera géré automatiquement
+        const membreId = `m-${inscription.email.replace(/[^a-zA-Z0-9]/g, "-")}`;
+        
+        ajouterAbonnement({
+          id: `ab-${Date.now()}`,
+          membreId: membreId,
+          membreNom: `${inscription.prenom} ${inscription.nom}`,
+          membreEmail: inscription.email,
+          membreTel: inscription.telephone,
+          type: inscription.typeAbonnementDemande as any,
+          prix: prix,
+          dateDebut: aujourdhui,
+          dateFin: dateFin,
+          statut: "actif",
+          renouvellementAuto: false,
+        });
+      }
+    }
+    
     toast({
       title: "Dossier validé",
-      description: `${inscriptionToValidate.prenom} ${inscriptionToValidate.nom} a été validé. Méthode de paiement : ${methodesPaiementConfig[result.data.methode].label}.`,
+      description: `${inscription.prenom} ${inscription.nom} a été validé avec succès${inscription.typeAbonnementDemande ? ` et un abonnement ${inscription.typeAbonnementDemande} a été créé.` : "."}`,
     });
-    closeDialogPaiement();
   };
 
-  const setDetail = (key: string, value: string) => {
-    setDetailsPaiement((prev) => ({ ...prev, [key]: value }));
-    setValidationError(null);
-  };
 
   const handleRejeter = (inscription: Inscription) => {
     setInscriptions((prev) =>
@@ -416,12 +477,93 @@ const AdminPage = () => {
     return true;
   };
 
+  // Vérifier si le coach est spécialisé dans l'activité (vérifie parmi ses 1-2 spécialités)
+  const verifierSpecialiteCoach = (coachNom: string, activite: SportId): boolean => {
+    const coach = coachs.find((c) => getNomCompletCoach(c) === coachNom);
+    if (!coach) return false;
+    
+    const specialiteRequise = mappingActiviteSpecialite[activite];
+    if (!specialiteRequise) return true; // Si pas de mapping, on accepte
+    
+    // Vérifier si le coach a la spécialité requise parmi ses spécialités (1-2 max)
+    return coach.specialites.includes(specialiteRequise);
+  };
+
+  // Vérifier si le coach est disponible au jour et à l'heure de la séance
+  const verifierDisponibiliteCoach = (coachNom: string, date: string, heureDebut: string, heureFin: string): boolean => {
+    const coach = coachs.find((c) => getNomCompletCoach(c) === coachNom);
+    if (!coach || !coach.disponibilites || coach.disponibilites.length === 0) {
+      // Si pas de disponibilités définies, on accepte (pour compatibilité)
+      return true;
+    }
+
+    const dateSeance = new Date(date);
+    const jourSemaine = dateSeance.getDay(); // 0 = Dimanche, 1 = Lundi, etc.
+
+    // Vérifier si le coach a une disponibilité ce jour-là
+    const disponibiliteJour = coach.disponibilites.find((d) => d.jourSemaine === jourSemaine);
+    if (!disponibiliteJour) {
+      return false; // Pas disponible ce jour
+    }
+
+    // Vérifier si les heures de la séance sont dans la plage de disponibilité
+    const heureDebutSeance = heureDebut.split(":").map(Number);
+    const heureFinSeance = heureFin.split(":").map(Number);
+    const heureDebutDispo = disponibiliteJour.heureDebut.split(":").map(Number);
+    const heureFinDispo = disponibiliteJour.heureFin.split(":").map(Number);
+
+    const minutesDebutSeance = heureDebutSeance[0] * 60 + heureDebutSeance[1];
+    const minutesFinSeance = heureFinSeance[0] * 60 + heureFinSeance[1];
+    const minutesDebutDispo = heureDebutDispo[0] * 60 + heureDebutDispo[1];
+    const minutesFinDispo = heureFinDispo[0] * 60 + heureFinDispo[1];
+
+    // La séance doit commencer après le début de la disponibilité et finir avant la fin
+    return minutesDebutSeance >= minutesDebutDispo && minutesFinSeance <= minutesFinDispo;
+  };
+
   const handleSauvegarderSeance = () => {
     if (!nouvelleSeance.coach || !nouvelleSeance.salle) {
       toast({
         variant: "destructive",
         title: "Champs requis",
         description: "Veuillez remplir tous les champs obligatoires.",
+      });
+      return;
+    }
+
+    // Valider que la date n'est pas dans le passé
+    const dateSeance = new Date(nouvelleSeance.date);
+    const aujourdhui = new Date();
+    aujourdhui.setHours(0, 0, 0, 0);
+    dateSeance.setHours(0, 0, 0, 0);
+    
+    if (dateSeance < aujourdhui) {
+      toast({
+        variant: "destructive",
+        title: "Date invalide",
+        description: "Impossible de créer une séance dans le passé. Veuillez sélectionner une date future.",
+      });
+      return;
+    }
+
+    // Vérifier la spécialité du coach
+    if (!verifierSpecialiteCoach(nouvelleSeance.coach, nouvelleSeance.activite)) {
+      const coach = coachs.find((c) => getNomCompletCoach(c) === nouvelleSeance.coach);
+      const specialiteRequise = mappingActiviteSpecialite[nouvelleSeance.activite];
+      toast({
+        variant: "destructive",
+        title: "Spécialité incompatible",
+        description: `Le coach ${nouvelleSeance.coach} est spécialisé en "${coach?.specialites.join(", ")}" mais l'activité "${coursData[nouvelleSeance.activite].nom}" nécessite la spécialité "${specialiteRequise}".`,
+      });
+      return;
+    }
+
+    // Vérifier la disponibilité du coach
+    if (!verifierDisponibiliteCoach(nouvelleSeance.coach, nouvelleSeance.date, nouvelleSeance.heureDebut, nouvelleSeance.heureFin)) {
+      toast({
+        variant: "destructive",
+        title: "Coach non disponible",
+        description: `Le coach ${nouvelleSeance.coach} n'est pas disponible à cette date et heure. Veuillez vérifier ses disponibilités.`,
       });
       return;
     }
@@ -711,7 +853,7 @@ const AdminPage = () => {
                             </TableCell>
                             <TableCell>{coach.email}</TableCell>
                             <TableCell>{coach.tel || "-"}</TableCell>
-                            <TableCell>{coach.specialite || "-"}</TableCell>
+                            <TableCell>{coach.specialites.join(", ") || "-"}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
                                 <Button
@@ -843,6 +985,103 @@ const AdminPage = () => {
                   <Button variant="outline" asChild>
                     <Link to="/planning">Voir le planning public</Link>
                   </Button>
+                </div>
+
+                {/* Section Confirmation des présences */}
+                <div className="mt-8 pt-8 border-t border-border">
+                  <h3 className="font-display text-lg font-bold mb-4">Confirmation des présences</h3>
+                  <p className="text-muted-foreground text-sm mb-6">
+                    Confirmez les séances passées pour valider les présences. Une fois confirmée, la séance apparaîtra comme complétée dans l'espace coach.
+                  </p>
+                  {seances.filter((s) => {
+                    const dateSeance = new Date(s.date + "T" + s.heureDebut);
+                    return dateSeance < new Date() && !s.completee;
+                  }).length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <CheckCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p className="font-medium">Toutes les séances passées sont confirmées</p>
+                      <p className="text-sm mt-2">Aucune séance passée n'attend de confirmation.</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border hover:bg-transparent">
+                            <TableHead>Date</TableHead>
+                            <TableHead>Horaire</TableHead>
+                            <TableHead>Activité</TableHead>
+                            <TableHead>Coach</TableHead>
+                            <TableHead>Salle</TableHead>
+                            <TableHead>Inscrits</TableHead>
+                            <TableHead className="text-right">Action</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {seances
+                            .filter((s) => {
+                              const dateSeance = new Date(s.date + "T" + s.heureDebut);
+                              return dateSeance < new Date() && !s.completee;
+                            })
+                            .sort((a, b) => {
+                              const dateCompare = b.date.localeCompare(a.date);
+                              if (dateCompare !== 0) return dateCompare;
+                              return b.heureDebut.localeCompare(a.heureDebut);
+                            })
+                            .map((seance) => (
+                              <TableRow key={seance.id} className="border-border">
+                                <TableCell className="font-medium">
+                                  {formatDate(seance.date)}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <Clock className="w-3 h-3 text-muted-foreground" />
+                                    {seance.heureDebut} - {seance.heureFin}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="secondary">{coursData[seance.activite].nom}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <User className="w-3 h-3 text-muted-foreground" />
+                                    {seance.coach}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1 text-sm">
+                                    <MapPin className="w-3 h-3 text-muted-foreground" />
+                                    {seance.salle}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {seance.inscrits ?? 0} / {seance.capaciteMax ?? "-"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    size="sm"
+                                    className="bg-green-600 hover:bg-green-700"
+                                    onClick={() => {
+                                      setSeances((prev) =>
+                                        prev.map((s) =>
+                                          s.id === seance.id ? { ...s, completee: true } : s
+                                        )
+                                      );
+                                      toast({
+                                        title: "Présence confirmée",
+                                        description: `La séance du ${formatDate(seance.date)} a été confirmée. Elle apparaîtra comme complétée dans l'espace coach.`,
+                                      });
+                                    }}
+                                  >
+                                    <Check className="w-4 h-4 mr-2" />
+                                    Confirmer présence
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
                 </div>
 
                 {/* Section Réservations */}
@@ -1336,16 +1575,61 @@ const AdminPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="coach-specialite">Spécialité</Label>
-                  <Input
-                    id="coach-specialite"
-                    placeholder="Ex: Musculation, Yoga, CrossFit, Boxe..."
-                    value={nouveauCoach.specialite}
-                    onChange={(e) => setNouveauCoach((prev) => ({ ...prev, specialite: e.target.value }))}
-                  />
+                  <Label htmlFor="coach-specialites">Spécialités * (1 à 2 maximum)</Label>
+                  <div className="space-y-2">
+                    {domainesSpecialite.map((domaine) => {
+                      const isSelected = nouveauCoach.specialites.includes(domaine);
+                      const canSelect = nouveauCoach.specialites.length < 2 || isSelected;
+                      
+                      return (
+                        <div key={domaine} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`specialite-${domaine}`}
+                            checked={isSelected}
+                            disabled={!canSelect && !isSelected}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                if (nouveauCoach.specialites.length < 2) {
+                                  setNouveauCoach((prev) => ({
+                                    ...prev,
+                                    specialites: [...prev.specialites, domaine],
+                                  }));
+                                }
+                              } else {
+                                setNouveauCoach((prev) => ({
+                                  ...prev,
+                                  specialites: prev.specialites.filter((s) => s !== domaine),
+                                }));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-border"
+                          />
+                          <Label
+                            htmlFor={`specialite-${domaine}`}
+                            className={`text-sm cursor-pointer ${!canSelect && !isSelected ? "text-muted-foreground opacity-50" : ""}`}
+                          >
+                            {domaine}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    Domaine d'expertise du coach (optionnel).
+                    Sélectionnez 1 à 2 spécialités maximum. Un coach ne peut pas entraîner tous les domaines.
                   </p>
+                  {nouveauCoach.specialites.length > 0 && (
+                    <div className="mt-2 p-2 bg-primary/10 rounded-lg border border-primary/20">
+                      <p className="text-xs font-semibold text-primary mb-1">Spécialités sélectionnées:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {nouveauCoach.specialites.map((spec) => (
+                          <Badge key={spec} variant="secondary" className="text-xs">
+                            {spec}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1361,223 +1645,6 @@ const AdminPage = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Dialog Méthode de paiement (lors de la validation d'une inscription) */}
-          <Dialog open={!!inscriptionToValidate} onOpenChange={(open) => !open && closeDialogPaiement()}>
-            <DialogContent className="max-w-md sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-primary" />
-                  Méthode de paiement
-                </DialogTitle>
-                <DialogDescription>
-                  {inscriptionToValidate && (
-                    <>
-                      Affecter une méthode de paiement pour{" "}
-                      <strong>{inscriptionToValidate.prenom} {inscriptionToValidate.nom}</strong> (inscription validée).
-                      Renseignez les champs selon les contraintes de la méthode choisie.
-                    </>
-                  )}
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-4 py-2">
-                <div className="space-y-2">
-                  <Label>Méthode de paiement</Label>
-                  <Select
-                    value={methodePaiement}
-                    onValueChange={(v) => {
-                      setMethodePaiement(v as MethodePaiement);
-                      setDetailsPaiement(initialDetails);
-                      setValidationError(null);
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choisir une méthode" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="carte_bancaire">
-                        <span className="flex items-center gap-2">
-                          <CreditCard className="w-4 h-4" /> Carte bancaire
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="virement">
-                        <span className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4" /> Virement bancaire
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="especes">
-                        <span className="flex items-center gap-2">
-                          <Banknote className="w-4 h-4" /> Espèces
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="cheque">
-                        <span className="flex items-center gap-2">
-                          <Landmark className="w-4 h-4" /> Chèque
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {methodePaiement && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Contraintes : {methodesPaiementConfig[methodePaiement].description}
-                    </p>
-                    <ul className="text-xs text-muted-foreground list-disc list-inside space-y-0.5">
-                      {methodesPaiementConfig[methodePaiement].contraintes.map((c, i) => (
-                        <li key={i}>{c}</li>
-                      ))}
-                    </ul>
-
-                    {methodePaiement === "carte_bancaire" && (
-                      <div className="grid gap-3 pt-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Numéro de carte (13–19 chiffres)</Label>
-                          <Input
-                            placeholder="1234567890123456"
-                            value={detailsPaiement.numeroCarte ?? ""}
-                            onChange={(e) => setDetail("numeroCarte", e.target.value)}
-                            maxLength={19}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Expiration (MM/AA)</Label>
-                            <Input
-                              placeholder="12/28"
-                              value={detailsPaiement.dateExpiration ?? ""}
-                              onChange={(e) => setDetail("dateExpiration", e.target.value)}
-                              maxLength={5}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">CVV (3 ou 4 chiffres)</Label>
-                            <Input
-                              placeholder="123"
-                              type="password"
-                              value={detailsPaiement.cvv ?? ""}
-                              onChange={(e) => setDetail("cvv", e.target.value)}
-                              maxLength={4}
-                            />
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Titulaire de la carte</Label>
-                          <Input
-                            placeholder="Jean Dupont"
-                            value={detailsPaiement.titulaire ?? ""}
-                            onChange={(e) => setDetail("titulaire", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {methodePaiement === "virement" && (
-                      <div className="grid gap-3 pt-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">IBAN (15–34 caractères)</Label>
-                          <Input
-                            placeholder="FR76 1234 5678 9012 3456 7890 123"
-                            value={detailsPaiement.iban ?? ""}
-                            onChange={(e) => setDetail("iban", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">BIC (8 ou 11 caractères)</Label>
-                          <Input
-                            placeholder="BNPAFRPP"
-                            value={detailsPaiement.bic ?? ""}
-                            onChange={(e) => setDetail("bic", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Nom de la banque (optionnel)</Label>
-                          <Input
-                            placeholder="BNP Paribas"
-                            value={detailsPaiement.nomBanque ?? ""}
-                            onChange={(e) => setDetail("nomBanque", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {methodePaiement === "especes" && (
-                      <div className="grid gap-3 pt-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Montant (optionnel)</Label>
-                          <Input
-                            placeholder="Montant en DH"
-                            value={detailsPaiement.montant ?? ""}
-                            onChange={(e) => setDetail("montant", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Note (optionnel)</Label>
-                          <Input
-                            placeholder="Paiement à l'accueil"
-                            value={detailsPaiement.note ?? ""}
-                            onChange={(e) => setDetail("note", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {methodePaiement === "cheque" && (
-                      <div className="grid gap-3 pt-2">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Numéro du chèque (optionnel)</Label>
-                          <Input
-                            placeholder="123456"
-                            value={detailsPaiement.numeroCheque ?? ""}
-                            onChange={(e) => setDetail("numeroCheque", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Nom de la banque *</Label>
-                          <Input
-                            placeholder="Banque Populaire"
-                            value={detailsPaiement.banque ?? ""}
-                            onChange={(e) => setDetail("banque", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Date d'échéance * (JJ/MM/AAAA)</Label>
-                          <Input
-                            type="date"
-                            value={detailsPaiement.dateEcheance ?? ""}
-                            onChange={(e) => setDetail("dateEcheance", e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Montant (optionnel)</Label>
-                          <Input
-                            placeholder="Montant en DH"
-                            value={detailsPaiement.montant ?? ""}
-                            onChange={(e) => setDetail("montant", e.target.value)}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {validationError && (
-                  <p className="text-sm text-destructive font-medium">{validationError}</p>
-                )}
-              </div>
-
-              <DialogFooter>
-                <Button variant="outline" onClick={closeDialogPaiement}>
-                  Annuler
-                </Button>
-                <Button onClick={handleConfirmerPaiement} className="bg-green-600 hover:bg-green-700">
-                  <Check className="w-4 h-4 mr-2" />
-                  Valider l'inscription et enregistrer le paiement
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
 
           {/* Dialog: Répondre au signalement */}
           <Dialog

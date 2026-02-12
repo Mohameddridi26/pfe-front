@@ -1,0 +1,561 @@
+{
+	"info": {
+		"_postman_id": "fitzone-api-collection",
+		"name": "FITZONE API",
+		"description": "Collection complète des endpoints API FITZONE",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@fitzone.com\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Me (Profile)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/me",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "me"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tarifs",
+			"item": [
+				{
+					"name": "Get All Tarifs",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/tarifs",
+							"host": ["{{base_url}}"],
+							"path": ["api", "tarifs"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Tarif (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Hebdomadaire\",\n  \"price\": 50.00,\n  \"period\": \"/semaine\",\n  \"description\": \"Abonnement d'une semaine\",\n  \"popular\": false,\n  \"features\": [\n    \"Accès à la salle\",\n    \"Cours collectifs\"\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tarifs",
+							"host": ["{{base_url}}"],
+							"path": ["api", "tarifs"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Tarif (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Mensuel\",\n  \"price\": 180.00,\n  \"period\": \"/mois\",\n  \"description\": \"Nouvelle description\",\n  \"popular\": true,\n  \"actif\": true,\n  \"features\": [\n    \"Accès illimité\",\n    \"Cours collectifs\",\n    \"Vestiaires\"\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/tarifs/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "tarifs", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "mensuel"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{
+					"name": "Get All Users (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User By ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/users/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "admin-1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nom\": \"Nouveau Nom\",\n  \"prenom\": \"Nouveau Prénom\",\n  \"telephone\": \"0612345678\",\n  \"cin\": \"AB123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/users/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "users", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "admin-1"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Inscriptions",
+			"item": [
+				{
+					"name": "Create Inscription",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nom\": \"Dupont\",\n  \"prenom\": \"Jean\",\n  \"email\": \"jean.dupont@email.com\",\n  \"telephone\": \"0612345678\",\n  \"cin\": \"AB123456\",\n  \"type_abonnement_demande\": \"Mensuel\",\n  \"methode_paiement\": \"carte_bancaire\",\n  \"photo_path\": \"/uploads/photos/photo.jpg\",\n  \"certificat_medical_path\": \"/uploads/certificats/certif.pdf\",\n  \"assurance_path\": \"/uploads/assurances/assurance.pdf\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/inscriptions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "inscriptions"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Inscriptions (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/inscriptions",
+							"host": ["{{base_url}}"],
+							"path": ["api", "inscriptions"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Inscription (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/inscriptions/:id/validate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "inscriptions", ":id", "validate"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "ins-123"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Seances",
+			"item": [
+				{
+					"name": "Get All Seances",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/seances",
+							"host": ["{{base_url}}"],
+							"path": ["api", "seances"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Seances with Filters",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/seances?date=2024-01-15&salle=Boxe",
+							"host": ["{{base_url}}"],
+							"path": ["api", "seances"],
+							"query": [
+								{
+									"key": "date",
+									"value": "2024-01-15"
+								},
+								{
+									"key": "salle",
+									"value": "Boxe"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Seance (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"coach_id\": \"coach-123\",\n  \"salle\": \"Boxe\",\n  \"activite\": \"Boxe\",\n  \"date\": \"2024-01-15\",\n  \"heure_debut\": \"10:00:00\",\n  \"duree\": 60,\n  \"capacite_max\": 20\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/seances",
+							"host": ["{{base_url}}"],
+							"path": ["api", "seances"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reservations",
+			"item": [
+				{
+					"name": "Get All Reservations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reservations",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reservations"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Reservation",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"seance_id\": \"seance-123\",\n  \"user_id\": \"user-123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/reservations",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reservations"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Cancel Reservation",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reservations/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reservations", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "reservation-123"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Coaches",
+			"item": [
+				{
+					"name": "Get All Coaches",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/api/coaches",
+							"host": ["{{base_url}}"],
+							"path": ["api", "coaches"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Coach (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nom\": \"Martin\",\n  \"prenom\": \"Pierre\",\n  \"email\": \"pierre.martin@fitzone.com\",\n  \"password\": \"coach123\",\n  \"telephone\": \"0612345678\",\n  \"specialites\": [\"Boxe\", \"Musculation\"],\n  \"salles\": [\"Boxe\", \"Musculation\"]\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/coaches",
+							"host": ["{{base_url}}"],
+							"path": ["api", "coaches"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Coach Disponibilites",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/coaches/:coachId/disponibilites",
+							"host": ["{{base_url}}"],
+							"path": ["api", "coaches", ":coachId", "disponibilites"],
+							"variable": [
+								{
+									"key": "coachId",
+									"value": "coach-123"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Get All Reports (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/reports",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports"]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Report",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"type\": \"probleme_technique\",\n  \"titre\": \"Problème avec la machine\",\n  \"description\": \"La machine de musculation ne fonctionne pas correctement\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/reports",
+							"host": ["{{base_url}}"],
+							"path": ["api", "reports"]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Root",
+			"item": [
+				{
+					"name": "API Info",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}
